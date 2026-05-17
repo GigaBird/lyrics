@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Lyrics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Manrope:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0c0c0e;
+      --surface:   #141418;
+      --active:    #ffffff;
+      --dim:       rgba(255,255,255,0.22);
+      --dimmer:    rgba(255,255,255,0.09);
+      --accent:    #1DB954;
+      --meta:      rgba(255,255,255,0.45);
+      --glow:      rgba(255,255,255,0.08);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--active);
+      font-family: 'Manrope', sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── LOGIN ── */
+    #login-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 28px;
+      background: var(--bg);
+    }
+
+    .login-logo {
+      width: 52px;
+      height: 52px;
+    }
+
+    .login-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--active);
+    }
+
+    .login-sub {
+      font-size: 0.9rem;
+      color: var(--meta);
+      font-weight: 400;
+      text-align: center;
+      max-width: 280px;
+      line-height: 1.6;
+    }
+
+    #login-btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 500px;
+      padding: 14px 40px;
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+    #login-btn:active { transform: scale(0.96); opacity: 0.85; }
+
+    /* ── PLAYER ── */
+    #player {
+      display: none;
+      flex-direction: row;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* Left panel */
+    #sidebar {
+      width: 240px;
+      min-width: 200px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: 28px 24px;
+      background: var(--surface);
+      border-right: 1px solid rgba(255,255,255,0.05);
+      gap: 14px;
+    }
+
+    #album-art {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #222;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+
+    #track-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+      color: var(--active);
+      word-break: break-word;
+    }
+
+    #artist-name {
+      font-size: 0.8rem;
+      color: var(--meta);
+      font-weight: 400;
+    }
+
+    .progress-bar-wrap {
+      width: 100%;
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 1s linear;
+    }
+
+    /* Right panel – lyrics */
+    #lyrics-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Fade edges */
+    #lyrics-panel::before,
+    #lyrics-panel::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      height: 80px;
+      z-index: 2;
+      pointer-events: none;
+    }
+    #lyrics-panel::before {
+      top: 0;
+      background: linear-gradient(to bottom, var(--bg), transparent);
+    }
+    #lyrics-panel::after {
+      bottom: 0;
+      background: linear-gradient(to top, var(--bg), transparent);
+    }
+
+    #lyrics-scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 80px 48px;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+    }
+    #lyrics-scroll::-webkit-scrollbar { display: none; }
+
+    #lyrics-container { display: flex; flex-direction: column; gap: 0; }
+
+    .lyric-line {
+      font-size: 1.55rem;
+      font-weight: 400;
+      line-height: 1.55;
+      color: var(--dimmer);
+      padding: 6px 0;
+      transition: color 0.35s ease, font-size 0.3s ease, font-weight 0.3s ease;
+      cursor: default;
+      word-break: break-word;
+    }
+
+    .lyric-line.near {
+      color: var(--dim);
+    }
+
+    .lyric-line.active {
+      font-size: 1.85rem;
+      font-weight: 500;
+      color: var(--active);
+      text-shadow: 0 0 40px var(--glow);
+    }
+
+    .lyric-line:empty::after {
+      content: '·';
+      opacity: 0.15;
+    }
+
+    /* Status / empty state */
+    #status {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.9rem;
+      color: var(--meta);
+      text-align: center;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    /* No lyrics plain display */
+    .plain-lyrics {
+      font-size: 1.1rem;
+      color: var(--dim);
+      line-height: 1.9;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+  <svg class="login-logo" viewBox="0 0 168 168" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="84" cy="84" r="84" fill="#1DB954"/>
+    <path d="M120.3 116.1c-1.6 2.6-5 3.4-7.6 1.8C93.5 106 69.3 103.5 40.7 110c-3 .7-6-1.2-6.7-4.2-.7-3 1.2-6 4.2-6.7 31.3-7.1 58.2-4.1 80.3 9.4 2.6 1.6 3.4 5 1.8 7.6zm9.8-21.7c-2 3.2-6.2 4.2-9.4 2.2C99.4 83.8 71 79.5 47.1 86.4c-3.5 1-7.2-1-8.2-4.5-1-3.5 1-7.2 4.5-8.2 27.6-8 61.8-3.2 85.4 13.3 3.2 2 4.2 6.2 2.2 9.4zm.8-22.6c-28.3-16.8-75-18.3-102-10.1-4.1 1.2-8.4-1.1-9.6-5.2-1.2-4.1 1.1-8.4 5.2-9.6 31-9.4 82.5-7.6 115.1 11.7 3.7 2.2 4.9 7 2.7 10.7-2.2 3.7-7 4.9-10.7 2.7h-.7z" fill="white"/>
+  </svg>
+  <div class="login-title">CarPlay Lyrics</div>
+  <div class="login-sub">Connect your Spotify account to display synced lyrics while you drive.</div>
+  <button id="login-btn">Connect Spotify</button>
+</div>
+
+<!-- ── PLAYER ── -->
+<div id="player">
+  <div id="sidebar">
+    <img id="album-art" src="" alt="Album Art" />
+    <div id="track-name">—</div>
+    <div id="artist-name">—</div>
+    <div class="progress-bar-wrap">
+      <div id="progress-bar"></div>
+    </div>
+  </div>
+  <div id="lyrics-panel">
+    <div id="status">Waiting for Spotify...</div>
+    <div id="lyrics-scroll">
+      <div id="lyrics-container"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ════════════════════════════════════════════════
+  //  CONFIG — paste your Spotify Client ID here
+  // ════════════════════════════════════════════════
+  const CLIENT_ID   = 'YOUR_SPOTIFY_CLIENT_ID_HERE';
+  const REDIRECT_URI = window.location.origin + window.location.pathname.replace(/\/$/, '');
+  const SCOPES      = 'user-read-currently-playing user-read-playback-state';
+
+  // ── PKCE helpers ──────────────────────────────
+  function randomString(len) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return Array.from(crypto.getRandomValues(new Uint8Array(len)))
+      .map(x => chars[x % chars.length]).join('');
+  }
+
+  async function pkceChallenge(verifier) {
+    const data   = new TextEncoder().encode(verifier);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return btoa(String.fromCharCode(...new Uint8Array(digest)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  // ── Auth ──────────────────────────────────────
+  async function login() {
+    const verifier   = randomString(128);
+    const challenge  = await pkceChallenge(verifier);
+    localStorage.setItem('pkce_verifier', verifier);
+
+    const params = new URLSearchParams({
+      client_id:             CLIENT_ID,
+      response_type:         'code',
+      redirect_uri:          REDIRECT_URI,
+      scope:                 SCOPES,
+      code_challenge_method: 'S256',
+      code_challenge:        challenge,
+    });
+    window.location = `https://accounts.spotify.com/authorize?${params}`;
+  }
+
+  async function exchangeCode(code) {
+    const verifier = localStorage.getItem('pkce_verifier');
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id:     CLIENT_ID,
+        grant_type:    'authorization_code',
+        code,
+        redirect_uri:  REDIRECT_URI,
+        code_verifier: verifier,
+      }),
+    });
+    saveTokens(await res.json());
+  }
+
+  async function refreshToken() {
+    const rt = localStorage.getItem('refresh_token');
+    if (!rt) { login(); return; }
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id:     CLIENT_ID,
+        grant_type:    'refresh_token',
+        refresh_token: rt,
+      }),
+    });
+    saveTokens(await res.json());
+  }
+
+  function saveTokens(data) {
+    if (data.access_token)  localStorage.setItem('access_token',  data.access_token);
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
+    if (data.expires_in)    localStorage.setItem('token_expiry',  Date.now() + data.expires_in * 1000);
+  }
+
+  async function getAccessToken() {
+    const expiry = parseInt(localStorage.getItem('token_expiry') || '0');
+    if (Date.now() > expiry - 60_000) await refreshToken();
+    return localStorage.getItem('access_token');
+  }
+
+  // ── Spotify API ───────────────────────────────
+  async function getNowPlaying() {
+    const token = await getAccessToken();
+    const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 204 || res.status >= 400) return null;
+    return res.json();
+  }
+
+  // ── Lyrics (lrclib.net) ───────────────────────
+  async function fetchLyrics(artist, title, album, durationMs) {
+    const params = new URLSearchParams({
+      artist_name: artist,
+      track_name:  title,
+      album_name:  album,
+      duration:    Math.round(durationMs / 1000),
+    });
+    try {
+      const res = await fetch(`https://lrclib.net/api/get?${params}`);
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.syncedLyrics || json.plainLyrics || null;
+    } catch { return null; }
+  }
+
+  function parseLRC(raw) {
+    if (!raw) return null;
+    const RE = /^\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/;
+    const lines = [];
+    for (const line of raw.split('\n')) {
+      const m = line.match(RE);
+      if (m) {
+        const ms = parseInt(m[1]) * 60000 + parseInt(m[2]) * 1000
+                 + parseInt(m[3].padEnd(3, '0'));
+        lines.push({ time: ms, text: m[4].trim() });
+      }
+    }
+    if (lines.length > 0) return lines;
+    // Plain lyrics fallback (no timestamps)
+    return raw.split('\n').map(t => ({ time: null, text: t }));
+  }
+
+  function activeIndex(lines, progressMs) {
+    let idx = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].time !== null && lines[i].time <= progressMs) idx = i;
+      else if (lines[i].time !== null) break;
+    }
+    return idx;
+  }
+
+  // ── UI ────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+
+  function showLogin()  { $('login-screen').style.display = 'flex'; $('player').style.display = 'none'; }
+  function showPlayer() { $('login-screen').style.display = 'none'; $('player').style.display  = 'flex'; }
+  function setStatus(msg) {
+    $('status').textContent = msg;
+    $('status').style.display = msg ? 'block' : 'none';
+  }
+
+  function renderLyrics(lines, activeIdx) {
+    const container = $('lyrics-container');
+    container.innerHTML = '';
+    const synced = lines[0]?.time !== null;
+
+    if (!synced) {
+      // Plain lyrics — just display
+      const el = document.createElement('div');
+      el.className = 'lyric-line plain-lyrics';
+      el.textContent = lines.map(l => l.text).join('\n');
+      container.appendChild(el);
+      return;
+    }
+
+    lines.forEach((line, i) => {
+      const el = document.createElement('div');
+      const dist = Math.abs(i - activeIdx);
+      el.className = 'lyric-line'
+        + (i === activeIdx     ? ' active' : '')
+        + (dist === 1          ? ' near'   : '');
+      el.textContent = line.text;
+      el.dataset.i   = i;
+      container.appendChild(el);
+    });
+
+    // Scroll active line to vertical center
+    requestAnimationFrame(() => {
+      const active = container.querySelector('.active');
+      if (active) active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+  }
+
+  function updateSidebar(track, progressMs) {
+    $('track-name').textContent  = track.name;
+    $('artist-name').textContent = track.artists.map(a => a.name).join(', ');
+    const img = track.album?.images?.[0]?.url;
+    if (img) $('album-art').src = img;
+    const pct = Math.min(100, (progressMs / track.duration_ms) * 100);
+    $('progress-bar').style.width = pct + '%';
+  }
+
+  // ── State ─────────────────────────────────────
+  let curTrackId   = null;
+  let lyricsLines  = null;
+  let curLineIdx   = -1;
+
+  // ── Poll loop ─────────────────────────────────
+  async function poll() {
+    try {
+      const data = await getNowPlaying();
+
+      if (!data?.item) {
+        setStatus('Nothing playing on Spotify…');
+        $('lyrics-container').innerHTML = '';
+        return;
+      }
+
+      setStatus('');
+      const { item: track, progress_ms: progress } = data;
+      updateSidebar(track, progress);
+
+      // New track → fetch lyrics
+      if (track.id !== curTrackId) {
+        curTrackId  = track.id;
+        lyricsLines = null;
+        curLineIdx  = -1;
+        $('lyrics-container').innerHTML = '';
+        setStatus('Loading lyrics…');
+
+        const raw = await fetchLyrics(
+          track.artists[0].name,
+          track.name,
+          track.album.name,
+          track.duration_ms,
+        );
+        lyricsLines = raw ? parseLRC(raw) : null;
+        setStatus(lyricsLines ? '' : 'No lyrics found for this song.');
+      }
+
+      if (!lyricsLines) return;
+
+      const synced = lyricsLines[0]?.time !== null;
+      if (!synced) {
+        if (curLineIdx === -1) { renderLyrics(lyricsLines, -1); curLineIdx = 0; }
+        return;
+      }
+
+      const newIdx = activeIndex(lyricsLines, progress);
+      if (newIdx !== curLineIdx) {
+        curLineIdx = newIdx;
+        renderLyrics(lyricsLines, curLineIdx);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // ── Init ──────────────────────────────────────
+  async function init() {
+    const params = new URLSearchParams(window.location.search);
+    const code   = params.get('code');
+
+    if (code) {
+      history.replaceState({}, '', window.location.pathname);
+      await exchangeCode(code);
+    }
+
+    if (!localStorage.getItem('access_token')) { showLogin(); return; }
+
+    showPlayer();
+    poll();
+    setInterval(poll, 2000);
+  }
+
+  $('login-btn').addEventListener('click', login);
+  init();
+</script>
+</body>
+</html>
